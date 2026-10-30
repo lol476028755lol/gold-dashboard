@@ -371,25 +371,32 @@
       btn.disabled = true;
       const idle = btn.innerHTML;
       btn.textContent = "采集中…";
-      let hint = "";
+      const prevTs = lastData && lastData.generated_at;
+      let liveOk = false;   // 本地 serve 的 /refresh 是否真跑了采集脚本
+      let partial = false;  // 真采集但部分行情源失败、按旧值兜底
       try {
         const r = await fetch("/refresh", { method: "POST", cache: "no-store" });
         if (r.ok) {
+          liveOk = true;
           const j = await r.json().catch(() => ({}));
-          if (j && j.ok === false) hint = "部分行情源失败，缺失项已按旧值兜底";
-        } else if (r.status === 404) {
-          hint = "线上静态站无采集服务，已立即刷新已发布数据";
-        } else {
-          hint = "采集服务返回异常，已立即刷新已加载数据";
+          if (j && j.ok === false) partial = true;
         }
+        // 404（线上 GitHub Pages 无该端点）或其它非 2xx：保持 liveOk=false，走降级刷新
       } catch (e) {
-        hint = "无本地采集服务，已立即刷新已加载数据";
+        liveOk = false;      // 无本地采集服务：降级为立即重读已发布数据
       }
       await loadData();
+      const newTs = lastData && lastData.generated_at;
+      let label;
+      if (liveOk && newTs !== prevTs) {
+        label = "✓ 已更新 " + new Date().toLocaleTimeString("zh-CN", { hour12: false });
+      } else if (liveOk) {
+        label = partial ? "部分源缺失·已按旧值兜底" : "采集完成·数据未变化";
+      } else {
+        label = "已刷新·云端定时更新";
+      }
       btn.disabled = false;
-      const now = new Date().toLocaleTimeString("zh-CN", { hour12: false });
-      btn.textContent = "✓ 已更新 " + now;
-      btn.title = hint;
+      btn.textContent = label;
       setTimeout(() => { btn.innerHTML = idle; }, 2800);
     });
   }
