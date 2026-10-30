@@ -57,7 +57,7 @@ h1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; display: flex; alig
   display: inline-block; margin: 0 0 6px; padding: 3px 12px;
   background: rgba(251, 191, 36, 0.10); color: var(--gold);
   border: 1px solid rgba(251, 191, 36, 0.35); border-radius: 8px;
-  font-size: 12px; line-height: 1.5; font-family: inherit; cursor: pointer;
+  font-size: 12px; line-height: 1.5; font-family: inherit; cursor: pointer; white-space: nowrap;
 }
 .refresh-btn:hover { background: rgba(251, 191, 36, 0.18); }
 .refresh-btn:disabled { opacity: 0.65; cursor: default; }
@@ -186,8 +186,8 @@ h1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; display: flex; alig
 /* ===== 黄金ETF持仓报告 Tab（GLD 逐日增减吨双向条形图） ===== */
 .etf-summary { font-size: 12.5px; color: var(--muted); padding: 2px 2px 10px; line-height: 1.7; }
 .etf-flow { display: flex; flex-direction: column; }
-.etf-row { display: grid; grid-template-columns: 76px minmax(120px, 1fr) 86px; align-items: center; gap: 8px; padding: 3px 0; }
-.etf-date { font-size: 12px; color: var(--muted); font-family: Consolas, "JetBrains Mono", monospace; text-align: right; }
+.etf-row { display: grid; grid-template-columns: 86px minmax(110px, 1fr) 86px; align-items: center; gap: 8px; padding: 3px 0; }
+.etf-date { font-size: 12px; color: var(--muted); font-family: Consolas, "JetBrains Mono", monospace; text-align: right; white-space: nowrap; }
 .etf-track { position: relative; height: 16px; }
 .etf-track::before { content: ""; position: absolute; left: 50%; top: 1px; bottom: 1px; width: 1px; background: rgba(139, 147, 179, 0.38); }
 .etf-bar { position: absolute; top: 3px; height: 10px; border-radius: 2px; }
@@ -198,7 +198,7 @@ h1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; display: flex; alig
 .etf-demo-note { color: var(--muted); font-size: 11.5px; margin: 12px 0 6px; padding: 6px 8px; border-left: 2px solid #fbbf24; background: var(--neutral-bg); border-radius: 4px; line-height: 1.6; }
 #flow-etf-demo-block .etf-row { opacity: 0.85; }
 @media (max-width: 560px) {
-  .etf-row { grid-template-columns: 62px minmax(90px, 1fr) 74px; gap: 6px; }
+  .etf-row { grid-template-columns: 80px minmax(76px, 1fr) 74px; gap: 6px; }
   .etf-date, .etf-val { font-size: 11px; }
 }
 
