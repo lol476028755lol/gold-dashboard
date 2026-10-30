@@ -1,5 +1,5 @@
 /* Service Worker：壳资源缓存优先；data.json 网络优先以拿到最新采集值，离线回退缓存 */
-const CACHE = "gold-dashboard-v18";
+const CACHE = "gold-dashboard-v21";
 const CORE = [
   "./",
   "index.html",

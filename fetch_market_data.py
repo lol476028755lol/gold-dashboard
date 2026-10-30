@@ -549,7 +549,11 @@ def main():
                 "holdings_flow": (gflow.get("holdings_flow") or gld_disc.get("holdings_flow")
                                   or prev_gld.get("holdings_flow") or []),
                 "pbo_months": gld_disc_eff.get("pbo_months"),
-                "pbo_source": gld_disc_eff.get("pbo_source")},
+                "pbo_reserve_oz_wan": gld_disc_eff.get("pbo_reserve_oz_wan"),
+                "pbo_date": gld_disc_eff.get("pbo_date"),
+                "pbo_source": gld_disc_eff.get("pbo_source"),
+                "reserve_series": (gld_disc.get("reserve_series")
+                                   or prev_gld.get("reserve_series") or [])},
         "comex": {**{k: v for k, v in comex.items()},
                   "tag": "趋势向上" if (comex.get("change_pct") or 0) >= 0 else "技术回调",
                   "note": "日内分时（分钟线）；虚线为前结算基准价，日K序列见 candles"},

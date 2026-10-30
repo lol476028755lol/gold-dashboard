@@ -19,6 +19,7 @@
   <div class="title-row">
     <h1>黄金投资决策仪表盘 <span class="pro">PRO</span></h1>
     <div class="title-meta">
+      <button type="button" class="refresh-btn" id="refresh-btn" title="本地预览：重新采集最新行情；线上静态站：立即刷新已发布数据">⟳ 立即采集</button>
       <div id="collect-time">采集时间：--</div>
       <div id="shge-price-line">SHGE 金价：--</div>
     </div>
@@ -116,7 +117,6 @@
     <div class="seg-tabs" id="gold-tabs">
       <button type="button" class="seg active" data-sym="comex">COMEX 黄金（美元/盎司）</button>
       <button type="button" class="seg" data-sym="shfe">沪金主力（元/克）</button>
-      <button type="button" class="seg" data-sym="etf">黄金ETF持仓报告</button>
     </div>
 
     <div id="quote-panel">
@@ -170,16 +170,78 @@
     </div>
     </div><!-- /#quote-panel -->
 
-    <div id="gold-etf-panel" hidden>
-      <div class="etf-summary" id="etf-summary"></div>
+    <!-- 黄金ETF持仓报告已迁至资金流向详情 #/flow（data-flow-tab=etf） -->
+  </section>
+
+  <!-- 资金流向详情：主页 #card-gld 点击进入，hash #/flow；外壳复用金价详情排版 -->
+  <section id="view-flow-detail" class="detail-view" hidden>
+    <div class="detail-head">
+      <button class="detail-back" id="flow-back" type="button">‹ 返回仪表盘</button>
+    </div>
+    <div class="seg-tabs" id="flow-tabs">
+      <button type="button" class="seg active" data-flow-tab="timeline">持仓异动时间流</button>
+      <button type="button" class="seg" data-flow-tab="etf">黄金ETF持仓报告</button>
+      <button type="button" class="seg" data-flow-tab="reserve">官方黄金储备</button>
+    </div>
+
+    <!-- Tab1：GLD 持仓每日增减异动时间流（参考图1版式；口径为 ETF 持仓吨，非期货成交额） -->
+    <div id="flow-timeline-panel">
+      <div class="chart-card">
+        <div class="sub-title">GLD ETF 持仓每日增减异动（吨 · 增持红 / 减持绿）</div>
+        <div class="flow-summary" id="flow-tl-summary"></div>
+        <div class="timeline" id="flow-tl-list"></div>
+        <div class="etf-empty" id="flow-tl-empty" hidden>暂无持仓异动序列，等待采集更新。</div>
+        <div class="footnote" id="flow-tl-note">口径：SPDR Gold Trust（GLD）每日持仓吨环比增减；非沪金期货成交额。</div>
+      </div>
+    </div>
+
+    <!-- Tab2：黄金ETF持仓报告（双向条形图，由金价详情迁入；口径 GLD 持仓吨） -->
+    <div id="flow-etf-panel" hidden>
+      <div class="etf-summary" id="flow-etf-summary"></div>
       <div class="chart-card">
         <div class="sub-title">GLD 每日持仓增减（吨 · 红色增持向右 / 绿色减持向左）</div>
-        <div class="etf-flow" id="etf-flow-list"></div>
-        <div class="etf-empty" id="etf-empty" hidden>暂无逐日持仓披露序列。请在 disclosure.json 的 gld.holdings_flow 维护公开披露的「日期 + 当日增减吨」后重跑采集脚本。</div>
-        <div id="etf-demo-block" hidden>
+        <div class="etf-flow" id="flow-etf-list"></div>
+        <div class="etf-empty" id="flow-etf-empty" hidden>暂无逐日持仓披露序列。请在 disclosure.json 的 gld.holdings_flow 维护公开披露的「日期 + 当日增减吨」后重跑采集脚本。</div>
+        <div id="flow-etf-demo-block" hidden>
           <div class="etf-demo-note">样式示例预览（非真实持仓；披露序列填入后自动替换为本节真实数据）</div>
-          <div class="etf-flow" id="etf-demo-list"></div>
+          <div class="etf-flow" id="flow-etf-demo-list"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Tab3：官方黄金储备（参考图2：总量大数字 + 月度折线 + 每月变化横条） -->
+    <div id="flow-reserve-panel" hidden>
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-label">当前官方黄金储备（吨）</div>
+          <div class="stat-value" id="rs-tons">--</div>
+          <div class="stat-sub tone-red" id="rs-months">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">最新月末（万盎司）</div>
+          <div class="stat-value" id="rs-oz">--</div>
+          <div class="stat-sub" id="rs-date">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">最新月环比（吨）</div>
+          <div class="stat-value" id="rs-chg-tons">--</div>
+          <div class="stat-sub" id="rs-chg-oz">--</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">本轮累计增持（吨）</div>
+          <div class="stat-value" id="rs-cum">--</div>
+          <div class="stat-sub" id="rs-cum-note">2024-11 起连续增持</div>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="sub-title">黄金储备总量（月度 · 吨）</div>
+        <canvas id="rs-line" class="chart-main" height="210"></canvas>
+        <div class="footnote" id="rs-source"></div>
+      </div>
+      <div class="chart-card">
+        <div class="sub-title">黄金储备每月变化量（吨 · 正值为增持）</div>
+        <div class="rs-bars" id="rs-bar-list"></div>
+        <div class="etf-empty" id="rs-bar-empty" hidden>月度变化序列待维护。</div>
       </div>
     </div>
   </section>

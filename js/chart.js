@@ -400,6 +400,41 @@
     ctx.strokeStyle = "#4a86f7"; ctx.lineWidth = 1.1; ctx.stroke();
   }
 
+  // 官方黄金储备月度总量折线：items=[{ym, tons}] 升序旧→新，红色趋势线
+  function reserveLine(canvas, items) {
+    if (!canvas) return;
+    const { ctx, cssW, cssH } = setupCanvas(canvas, 210);
+    const valid = (items || []).filter(it => it && typeof it.tons === "number" && isFinite(it.tons));
+    if (valid.length < 2) { placeholder(ctx, cssW, cssH); return; }
+    const vals = valid.map(it => it.tons);
+    let min = Math.min(...vals), max = Math.max(...vals);
+    const pad = (max - min || 1) * 0.1; min -= pad; max += pad;
+    const n = valid.length;
+    const x = i => i / (n - 1) * (cssW - 46) + 4;
+    const y = v => 10 + (1 - (v - min) / (max - min)) * (cssH - 28);
+    ctx.font = "9px Consolas, monospace";
+    for (let g = 0; g <= 3; g++) {
+      const v = min + (max - min) * g / 3, gy = y(v);
+      ctx.strokeStyle = GRID; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(4, gy); ctx.lineTo(cssW - 44, gy); ctx.stroke();
+      ctx.fillStyle = AXIS; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText(fmtAxis(v, 0), cssW - 42, gy);
+    }
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    const tickIdx = [...new Set([0, Math.floor(n * 0.25), Math.floor(n * 0.5), Math.floor(n * 0.75), n - 1])];
+    tickIdx.forEach(di => {
+      ctx.fillStyle = AXIS;
+      ctx.textAlign = di === 0 ? "left" : (di === n - 1 ? "right" : "center");
+      ctx.fillText(valid[di].ym.slice(2), x(di), cssH - 15);
+    });
+    ctx.beginPath();
+    valid.forEach((it, i) => i ? ctx.lineTo(x(i), y(it.tons)) : ctx.moveTo(x(i), y(it.tons)));
+    ctx.strokeStyle = "#f87171"; ctx.lineWidth = 1.6; ctx.lineJoin = "round"; ctx.stroke();
+    const last = valid[n - 1];
+    ctx.fillStyle = "#f87171";
+    ctx.beginPath(); ctx.arc(x(n - 1), y(last.tons), 3, 0, Math.PI * 2); ctx.fill();
+  }
+
   window.GoldChart = { sparkline, candle, intraday,
-    sma, rsiWilder, macdSeries, detailMain, detailRsi, detailMacd };
+    sma, rsiWilder, macdSeries, detailMain, detailRsi, detailMacd, reserveLine };
 })();

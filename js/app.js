@@ -201,14 +201,7 @@
   }
 
   function renderGoldDetail(data) {
-    if (goldState.sym === "etf") {
-      $("quote-panel").hidden = true;
-      $("gold-etf-panel").hidden = false;
-      renderEtfFlow(data);
-      return;
-    }
     $("quote-panel").hidden = false;
-    $("gold-etf-panel").hidden = true;
     const a = analyzeSymbol(goldState.sym, data);
     const { daily, closes, ma, rsi, macd, snap, meta } = a;
     const n = closes.length;
@@ -291,14 +284,14 @@
       </div>`;
     }).join("");
   }
-  function renderEtfFlow(data) {
+  function renderFlowEtf(data) {
     const ROW_CAP = 40; // 详情页展示最近交易日条数，全量序列保留在 data.json
     const gld = data.gld || {};
     const flow = Array.isArray(gld.holdings_flow) ? gld.holdings_flow : [];
     const nums = flow.map(x => Number(x.change_tons) || 0);
     const sumAll = nums.reduce((s, v) => s + v, 0);
 
-    const summary = $("etf-summary");
+    const summary = $("flow-etf-summary");
     const lines = [];
     if (gld.etf_holdings_tons != null) lines.push(`最新持仓 ${fmt(gld.etf_holdings_tons, 2)} 吨（${gld.etf_holdings_date || "--"}）`);
     if (flow.length) {
@@ -310,10 +303,10 @@
     if (usedExample) lines.push("示例数据（离线兜底，非真实持仓披露）");
     summary.textContent = lines.join("　·　");
 
-    const list = $("etf-flow-list");
-    const empty = $("etf-empty");
-    const demoBlock = $("etf-demo-block");
-    const demoList = $("etf-demo-list");
+    const list = $("flow-etf-list");
+    const empty = $("flow-etf-empty");
+    const demoBlock = $("flow-etf-demo-block");
+    const demoList = $("flow-etf-demo-list");
     if (!flow.length) {
       list.innerHTML = "";
       empty.hidden = false;
@@ -350,11 +343,163 @@
     }
   }
 
+  // ---------- 资金流向详情（hash #/flow）：持仓异动时间流 + 官方黄金储备 ----------
+  const OZ_WAN_TO_TON = 0.311035; // 1 万盎司 = 0.311035 吨
+  const flowState = { tab: "timeline" };
+
+  function bindFlowDetail() {
+    $("flow-back").addEventListener("click", () => { location.hash = ""; });
+    document.querySelectorAll("#flow-tabs .seg").forEach(b => b.addEventListener("click", () => {
+      flowState.tab = b.dataset.flowTab;
+      document.querySelectorAll("#flow-tabs .seg").forEach(x => x.classList.toggle("active", x === b));
+      renderFlowDetail(lastData);
+    }));
+    const card = $("card-gld");
+    if (card) {
+      card.classList.add("clickable");
+      card.addEventListener("click", () => { location.hash = "/flow"; });
+    }
+  }
+
+  // 顶部「立即采集」：本地 serve 的 POST /refresh 真跑采集脚本重生成 data.json；
+  // 线上 GitHub Pages 无该端点（404/网络失败）时静默降级为立即重读 data.json 并重绘。
+  function bindRefresh() {
+    const btn = $("refresh-btn");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      const idle = btn.innerHTML;
+      btn.textContent = "采集中…";
+      let hint = "";
+      try {
+        const r = await fetch("/refresh", { method: "POST", cache: "no-store" });
+        if (r.ok) {
+          const j = await r.json().catch(() => ({}));
+          if (j && j.ok === false) hint = "部分行情源失败，缺失项已按旧值兜底";
+        } else if (r.status === 404) {
+          hint = "线上静态站无采集服务，已立即刷新已发布数据";
+        } else {
+          hint = "采集服务返回异常，已立即刷新已加载数据";
+        }
+      } catch (e) {
+        hint = "无本地采集服务，已立即刷新已加载数据";
+      }
+      await loadData();
+      btn.disabled = false;
+      const now = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+      btn.textContent = "✓ 已更新 " + now;
+      btn.title = hint;
+      setTimeout(() => { btn.innerHTML = idle; }, 2800);
+    });
+  }
+
+  function renderFlowDetail(data) {
+    $("flow-timeline-panel").hidden = flowState.tab !== "timeline";
+    $("flow-etf-panel").hidden = flowState.tab !== "etf";
+    $("flow-reserve-panel").hidden = flowState.tab !== "reserve";
+    if (flowState.tab === "timeline") renderFlowTimeline(data);
+    else if (flowState.tab === "etf") renderFlowEtf(data);
+    else renderFlowReserve(data);
+  }
+
+  function renderFlowTimeline(data) {
+    const ROW_CAP = 40;
+    const gld = data.gld || {};
+    const flow = Array.isArray(gld.holdings_flow) ? gld.holdings_flow : [];
+    const summary = $("flow-tl-summary");
+    const list = $("flow-tl-list");
+    const empty = $("flow-tl-empty");
+    if (!flow.length) {
+      list.innerHTML = "";
+      empty.hidden = false;
+      summary.textContent = "持仓异动序列待采集维护。";
+      return;
+    }
+    empty.hidden = true;
+    const nums = flow.map(x => Number(x.change_tons) || 0);
+    const sumAll = nums.reduce((s, v) => s + v, 0);
+    summary.textContent = `共 ${flow.length} 个交易日（展示最近 ${Math.min(ROW_CAP, flow.length)} 日）· 全序列净额 ${sumAll >= 0 ? "+" : ""}${sumAll.toFixed(3)} 吨`;
+
+    const recent = flow.slice(-ROW_CAP).slice().reverse(); // 最新在上
+    const groups = new Map();
+    recent.forEach(x => {
+      const d = x.date || "--";
+      if (!groups.has(d)) groups.set(d, []);
+      groups.get(d).push(x);
+    });
+    let html = "";
+    groups.forEach((items, date) => {
+      let rows = "";
+      items.forEach(x => {
+        const v = Number(x.change_tons) || 0;
+        const pos = v >= 0;
+        const cls = pos ? "in" : "out";
+        const verb = pos ? "增持（流入）" : "减持（流出）";
+        rows += `<div class="tl-item">
+          <span class="tl-bubble ${cls}">GLD 持仓${verb} ${pos ? "+" : ""}${v.toFixed(3)} 吨</span>
+        </div>`;
+      });
+      html += `<div class="tl-group"><div class="tl-group-date">${date}</div>${rows}</div>`;
+    });
+    list.innerHTML = html;
+  }
+
+  function renderFlowReserve(data) {
+    const gld = data.gld || {};
+    const series = Array.isArray(gld.reserve_series) ? gld.reserve_series : [];
+    const last = series[series.length - 1] || null;
+
+    const oz = last ? last.oz_wan : gld.pbo_reserve_oz_wan;
+    $("rs-tons").textContent = oz != null ? fmt(oz * OZ_WAN_TO_TON, 2) : "--";
+    $("rs-oz").textContent = oz != null ? fmt(oz, 0) : "--";
+    $("rs-date").textContent = gld.pbo_date ? "截至 " + gld.pbo_date : (last ? "截至 " + last.ym : "--");
+    $("rs-months").textContent = gld.pbo_months ? `连续 ${gld.pbo_months} 个月增持` : "--";
+
+    const lastChg = last ? last.change_oz_wan : null;
+    if (lastChg != null) {
+      $("rs-chg-tons").textContent = "+" + fmt(lastChg * OZ_WAN_TO_TON, 2);
+      $("rs-chg-oz").textContent = `环比 +${fmt(lastChg, 0)} 万盎司`;
+    } else {
+      $("rs-chg-tons").textContent = "--";
+      $("rs-chg-oz").textContent = "--";
+    }
+    const cumOz = series.reduce((s, x) => s + (Number(x.change_oz_wan) || 0), 0);
+    $("rs-cum").textContent = series.length ? "+" + fmt(cumOz * OZ_WAN_TO_TON, 2) : "--";
+
+    const items = series.map(x => ({ ym: x.ym, tons: (Number(x.oz_wan) || 0) * OZ_WAN_TO_TON }));
+    GoldChart.reserveLine($("rs-line"), items);
+
+    const barList = $("rs-bar-list");
+    const barEmpty = $("rs-bar-empty");
+    if (!series.length) {
+      barList.innerHTML = "";
+      barEmpty.hidden = false;
+    } else {
+      barEmpty.hidden = true;
+      const maxAbs = Math.max(0.001, ...series.map(x => Math.abs(Number(x.change_oz_wan) || 0)));
+      barList.innerHTML = series.slice().reverse().map(x => {
+        const chgOz = Number(x.change_oz_wan) || 0;
+        const chgT = chgOz * OZ_WAN_TO_TON;
+        const w = (Math.abs(chgOz) / maxAbs * 100).toFixed(1);
+        return `<div class="rs-row">
+          <span class="rs-month">${x.ym}</span>
+          <span class="rs-track"><i class="rs-bar" style="width:${w}%"></i></span>
+          <span class="rs-val">+${fmt(chgT, 2)}</span>
+        </div>`;
+      }).join("");
+    }
+    $("rs-source").textContent = gld.pbo_source ? "来源：" + gld.pbo_source : "";
+  }
+
   function applyRoute() {
-    const detail = location.hash === "#/gold";
-    $("view-dashboard").hidden = detail;
-    $("view-gold-detail").hidden = !detail;
-    if (detail && lastData) renderGoldDetail(lastData);
+    const gold = location.hash === "#/gold";
+    const flow = location.hash === "#/flow";
+    $("view-dashboard").hidden = gold || flow;
+    $("view-gold-detail").hidden = !gold;
+    $("view-flow-detail").hidden = !flow;
+    if (gold && lastData) renderGoldDetail(lastData);
+    if (flow && lastData) renderFlowDetail(lastData);
     window.scrollTo(0, 0);
   }
   window.addEventListener("hashchange", applyRoute);
@@ -373,6 +518,7 @@
     renderPremium(data);
     renderCompare(data);
     if (!$("view-gold-detail").hidden) renderGoldDetail(data);
+    if (!$("view-flow-detail").hidden) renderFlowDetail(data);
   }
 
   async function loadData() {
@@ -403,6 +549,8 @@
   }
 
   bindGoldDetail();
+  bindFlowDetail();
+  bindRefresh();
   applyRoute();
   renderClock();
   setInterval(renderClock, 1000);

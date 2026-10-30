@@ -83,7 +83,10 @@
       {"date": "2026-10-22", "change_tons": -11.973}
     ],
     "pbo_months": null,
-    "pbo_source": null
+    "pbo_reserve_oz_wan": null,
+    "pbo_date": null,
+    "pbo_source": null,
+    "reserve_series": []
   },
   "comex": {
     "available": true,

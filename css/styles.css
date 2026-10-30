@@ -52,6 +52,15 @@ h1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; display: flex; alig
 /* 右上角 SHGE 金价：标签小字，价格数字放大突出 */
 #shge-price-line { font-size: 13px; margin-top: 2px; }
 #shge-price-line strong { color: var(--gold); font-family: Consolas, monospace; font-size: 18px; font-weight: 700; letter-spacing: .3px; }
+/* 顶部手动「立即采集」按钮：本地 serve POST /refresh 真跑脚本；线上降级为立即刷新数据 */
+.refresh-btn {
+  display: inline-block; margin: 0 0 6px; padding: 3px 12px;
+  background: rgba(251, 191, 36, 0.10); color: var(--gold);
+  border: 1px solid rgba(251, 191, 36, 0.35); border-radius: 8px;
+  font-size: 12px; line-height: 1.5; font-family: inherit; cursor: pointer;
+}
+.refresh-btn:hover { background: rgba(251, 191, 36, 0.18); }
+.refresh-btn:disabled { opacity: 0.65; cursor: default; }
 
 /* cards */
 .card {
@@ -187,9 +196,40 @@ h1 { font-size: 22px; font-weight: 800; letter-spacing: 1px; display: flex; alig
 .etf-val { font-size: 12px; font-family: Consolas, "JetBrains Mono", monospace; text-align: left; }
 .etf-empty { color: var(--muted); font-size: 12.5px; padding: 16px 8px 6px; text-align: center; line-height: 1.8; }
 .etf-demo-note { color: var(--muted); font-size: 11.5px; margin: 12px 0 6px; padding: 6px 8px; border-left: 2px solid #fbbf24; background: var(--neutral-bg); border-radius: 4px; line-height: 1.6; }
-#etf-demo-block .etf-row { opacity: 0.85; }
+#flow-etf-demo-block .etf-row { opacity: 0.85; }
 @media (max-width: 560px) {
   .etf-row { grid-template-columns: 62px minmax(90px, 1fr) 74px; gap: 6px; }
   .etf-date, .etf-val { font-size: 11px; }
+}
+
+/* ===== 资金流向详情 #/flow（外壳复用 detail-view / seg-tabs / chart-card） ===== */
+#card-gld.clickable { cursor: pointer; transition: border-color 0.15s ease, transform 0.15s ease; }
+#card-gld.clickable:hover { border-color: rgba(96, 165, 250, 0.45); }
+#card-gld.clickable:active { transform: scale(0.998); }
+
+/* Tab1：持仓异动时间流（参考图1时间轴气泡） */
+.flow-summary { font-size: 12.5px; color: var(--muted); padding: 2px 2px 10px; line-height: 1.7; }
+.timeline { display: flex; flex-direction: column; gap: 14px; }
+.tl-group { position: relative; padding-left: 14px; }
+.tl-group::before { content: ""; position: absolute; left: 3px; top: 6px; bottom: 6px; width: 1px; background: rgba(139, 147, 179, 0.25); }
+.tl-group-date { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; color: var(--text); background: var(--neutral-bg); border-radius: 8px; padding: 5px 11px; margin-bottom: 8px; }
+.tl-group-date::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.tl-item { position: relative; padding: 2px 0 8px 12px; }
+.tl-item::before { content: ""; position: absolute; left: -11px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.tl-time { font-size: 11.5px; color: var(--dim); font-family: Consolas, monospace; margin-bottom: 3px; }
+.tl-bubble { display: inline-block; font-size: 13px; padding: 8px 13px; border-radius: 10px; line-height: 1.4; max-width: 100%; }
+.tl-bubble.in { background: var(--red-bg); color: var(--red); }
+.tl-bubble.out { background: var(--good-bg); color: var(--good); }
+
+/* Tab2：官方储备每月变化横条（参考图2，单向红条） */
+.rs-bars { display: flex; flex-direction: column; gap: 6px; }
+.rs-row { display: grid; grid-template-columns: 64px minmax(120px, 1fr) 72px; align-items: center; gap: 10px; padding: 2px 0; }
+.rs-month { font-size: 12px; color: var(--muted); font-family: Consolas, monospace; text-align: right; }
+.rs-track { position: relative; height: 15px; }
+.rs-bar { position: absolute; left: 0; top: 2px; height: 11px; border-radius: 2px; background: var(--red); opacity: 0.9; }
+.rs-val { font-size: 12px; font-family: Consolas, monospace; color: var(--red); text-align: left; }
+@media (max-width: 560px) {
+  .rs-row { grid-template-columns: 56px minmax(80px, 1fr) 62px; gap: 6px; }
+  .rs-month, .rs-val { font-size: 11px; }
 }
 
