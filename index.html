@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f1c">
+<title>黄金投资决策仪表盘 PRO</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/styles.css">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+</head>
+<body>
+<header class="topbar">
+  <div class="status"><span class="dot online"></span>SYSTEM&nbsp;ONLINE&nbsp;|&nbsp;<span id="clock">--:--:--</span></div>
+  <div class="src">SOURCE: BLOOMBERG / SHGE / COMEX</div>
+</header>
+
+<div class="wrap" id="view-dashboard">
+  <div class="title-row">
+    <h1>黄金投资决策仪表盘 <span class="pro">PRO</span></h1>
+    <div class="title-meta">
+      <div id="collect-time">采集时间：--</div>
+      <div id="shge-price-line">SHGE 金价：--</div>
+    </div>
+  </div>
+  <section class="card banner" id="verdict-banner">
+    <div class="banner-main">
+      <span id="verdict-light" class="light green"></span>
+      <div class="banner-text">
+        <div class="kicker">AI 决策建议</div>
+        <h2 id="verdict-headline">--</h2>
+        <p id="verdict-sub">--</p>
+      </div>
+    </div>
+    <div class="tags" id="verdict-tags"></div>
+  </section>
+
+  <main class="grid">
+    <section class="card" id="card-macro">
+      <div class="card-head">
+        <span class="card-title">🌐 宏观风向标</span>
+        <span class="badge" data-tone="good" id="macro-tag">--</span>
+      </div>
+      <h3 class="card-line" id="macro-title">--</h3>
+      <div class="sub-label">FACTS</div>
+      <ul class="fact-list" id="macro-facts"></ul>
+      <div class="footnote" id="macro-sources"></div>
+    </section>
+
+    <section class="card" id="card-comex">
+      <div class="card-head">
+        <span class="card-title">📈 金价走势 (COMEX)</span>
+        <span class="badge" data-tone="red" id="comex-tag">--</span>
+      </div>
+      <div class="big-num red" id="comex-value">--</div>
+      <div class="delta red" id="comex-delta">--</div>
+      <div class="muted" id="comex-note">--</div>
+      <canvas class="spark" id="comex-chart" height="56"></canvas>
+    </section>
+
+    <section class="card" id="card-us10y">
+      <div class="card-head">
+        <span class="card-title">🇺🇸 美债收益率 (10Y)</span>
+        <span class="badge" data-tone="good" id="us10y-tag">--</span>
+      </div>
+      <div class="big-num green" id="us10y-value">--</div>
+      <div class="delta" id="us10y-delta">--</div>
+      <div class="muted" id="us10y-range">--</div>
+      <canvas class="spark" id="us10y-chart" height="56"></canvas>
+    </section>
+
+    <section class="card" id="card-dxy">
+      <div class="card-head">
+        <span class="card-title">💵 美元指数 (DXY)</span>
+        <span class="badge" data-tone="neutral" id="dxy-tag">--</span>
+      </div>
+      <div class="big-num" id="dxy-value">--</div>
+      <div class="delta" id="dxy-delta">--</div>
+      <div class="muted" id="dxy-range">--</div>
+      <canvas class="spark" id="dxy-chart" height="56"></canvas>
+    </section>
+
+    <section class="card" id="card-gld">
+      <div class="card-head">
+        <span class="card-title">💰 资金流向 (GLD)</span>
+        <span class="badge" data-tone="gold" id="gld-tag">--</span>
+      </div>
+      <h3 class="card-line" id="gld-title">--</h3>
+      <div class="sub-label">DETAILS</div>
+      <ul class="fact-list" id="gld-details"></ul>
+      <div class="footnote" id="gld-source"></div>
+    </section>
+
+    <section class="card" id="card-premium">
+      <div class="card-head">
+        <span class="card-title">⚖️ 国内溢价</span>
+        <span class="badge" data-tone="good" id="premium-tag">--</span>
+      </div>
+      <div class="big-num gold"><span id="premium-value">--</span><span class="unit">%</span></div>
+      <div class="muted" id="premium-note">--</div>
+      <div class="footnote" id="premium-footnote"></div>
+    </section>
+
+    <section class="card card-wide compare" id="card-compare">
+      <div class="card-head"><span class="card-title">📊 本周关键趋势对比</span></div>
+      <div class="compare-rows" id="compare-rows"></div>
+    </section>
+  </main>
+</div>
+
+<!-- 技术分析详情：金价走势卡片点击进入，hash #/gold -->
+<section id="view-gold-detail" class="detail-view" hidden>
+    <div class="detail-head">
+      <button class="detail-back" id="gold-back" type="button">‹ 返回仪表盘</button>
+    </div>
+    <div class="seg-tabs" id="gold-tabs">
+      <button type="button" class="seg active" data-sym="comex">COMEX 黄金（美元/盎司）</button>
+      <button type="button" class="seg" data-sym="shfe">沪金主力（元/克）</button>
+      <button type="button" class="seg" data-sym="etf">黄金ETF持仓报告</button>
+    </div>
+
+    <div id="quote-panel">
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-label" id="st-last-label">最新收盘（美元/盎司）</div>
+        <div class="stat-value" id="st-last">--</div>
+        <div class="stat-sub tone-good" id="st-last-chg">--</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">近一周</div>
+        <div class="stat-value" id="st-week">--</div>
+        <div class="stat-sub" id="st-week-n">5 个交易日</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">近一月</div>
+        <div class="stat-value" id="st-month">--</div>
+        <div class="stat-sub" id="st-month-n">20 个交易日</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">RSI(14)</div>
+        <div class="stat-value" id="st-rsi">--</div>
+        <div class="stat-sub" id="st-rsi-state">--</div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-toolbar">
+        <div class="ma-seg" id="ma-seg">
+          <button type="button" class="chip" data-ma="20">MA20</button>
+          <button type="button" class="chip active" data-ma="60">MA60</button>
+          <button type="button" class="chip" data-ma="120">MA120</button>
+        </div>
+        <span class="trend-note" id="trend-note">--</span>
+        <div class="period-seg" id="period-seg">
+          <button type="button" class="chip" data-p="3M">3M</button>
+          <button type="button" class="chip" data-p="6M">6M</button>
+          <button type="button" class="chip active" data-p="1Y">1Y</button>
+          <button type="button" class="chip" data-p="ALL">全部</button>
+        </div>
+      </div>
+      <canvas id="gold-main" class="chart-main"></canvas>
+      <div class="sub-panel">
+        <div class="sub-title">RSI(14)</div>
+        <canvas id="gold-rsi" class="chart-sub"></canvas>
+      </div>
+      <div class="sub-panel">
+        <div class="sub-title">MACD(12,26,9) 柱</div>
+        <canvas id="gold-macd" class="chart-sub"></canvas>
+      </div>
+    </div>
+    </div><!-- /#quote-panel -->
+
+    <div id="gold-etf-panel" hidden>
+      <div class="etf-summary" id="etf-summary"></div>
+      <div class="chart-card">
+        <div class="sub-title">GLD 每日持仓增减（吨 · 红色增持向右 / 绿色减持向左）</div>
+        <div class="etf-flow" id="etf-flow-list"></div>
+        <div class="etf-empty" id="etf-empty" hidden>暂无逐日持仓披露序列。请在 disclosure.json 的 gld.holdings_flow 维护公开披露的「日期 + 当日增减吨」后重跑采集脚本。</div>
+        <div id="etf-demo-block" hidden>
+          <div class="etf-demo-note">样式示例预览（非真实持仓；披露序列填入后自动替换为本节真实数据）</div>
+          <div class="etf-flow" id="etf-demo-list"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div>来源：SHFE/SHGE · COMEX/伦敦金（新浪/东方财富） · SPDR Gold Trust 每日持仓（uhas.com 聚合，CC-BY 4.0） · 美债10Y（CNBC/美财政部）</div>
+    <div class="disclaimer">仅供参考，不构成投资建议；据此操作风险自担。</div>
+  </footer>
+
+<div id="offline-badge" hidden>离线示例数据</div>
+<script src="js/chart.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
