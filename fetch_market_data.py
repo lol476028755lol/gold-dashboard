@@ -314,6 +314,27 @@ def fetch_shfe_main(timeout):
 
 # ---------- derived signals ----------
 
+def backfill(cur, old, scalar_keys, seq_keys=()):
+    """本次采集缺失（None / 空序列 / 空 dict）时沿用上一份 data.json 的旧值，
+    避免休市或单次超时把上次成交价清空。只在当前为空时回填，绝不覆盖本次新采到的值；
+    补到报价后把 available 置 True，前端才不会误判为 '--'。"""
+    cur = cur if isinstance(cur, dict) else {}
+    old = old if isinstance(old, dict) else {}
+    out = dict(cur)
+    filled_price = False
+    for k in scalar_keys:
+        if out.get(k) is None and old.get(k) is not None:
+            out[k] = old[k]
+            if k in ("price", "value"):
+                filled_price = True
+    for k in seq_keys:
+        if not out.get(k) and old.get(k):
+            out[k] = old[k]
+    if filled_price and out.get("available") is not True:
+        out["available"] = True
+    return out
+
+
 def build_premium(shge, xau, fx):
     shge, xau, fx = shge or {}, xau or {}, fx or {}
     if not (shge.get("available") and xau.get("available") and fx.get("available")):
@@ -506,15 +527,24 @@ def main():
 
     us10y = collected.get("us10y") or {"available": False, "value": None, "prev": None,
                                        "change_bps": None, "tag": None, "trend": []}
+    us10y = backfill(us10y, prev.get("us10y") or {},
+                     ["value", "prev", "change_bps", "tag"], ["trend"])
     disc = load_disclosure()
     gld_disc = disc.get("gld", {})
     macro = disc.get("macro", {"tag": "中性", "title": "", "facts": [], "sources": []})
     premium = build_premium(collected.get("shge") or {}, collected.get("xau") or {}, collected.get("fx") or {})
     verdict = build_verdict(collected.get("comex") or {}, premium, us10y, collected.get("dxy"))
 
-    shge = collected.get("shge") or {}
-    comex = collected.get("comex") or {}
     gld = collected.get("gld") or {}
+    # 休市 / 个别源超时：单点报价与空序列沿用上一份 data.json，不把上次成交数据清空
+    shge = backfill(collected.get("shge") or {}, prev.get("shge") or {},
+                    ["price", "prev_close", "change_pct"], ["trend"])
+    comex = backfill(collected.get("comex") or {}, prev.get("comex") or {},
+                     ["price", "change_pct"], ["trend", "candles", "daily", "intraday"])
+    shfe = backfill(collected.get("shfe_main") or {}, prev.get("shfe_main") or {},
+                    ["price", "prev_close", "change_pct"], ["daily"])
+    dxy = backfill(collected.get("dxy"), prev.get("dxy") or {},
+                   ["value", "prev", "change_pct", "high", "low", "tag"], ["trend"])
 
     # GLD 持仓优先级：本次自动源 > disclosure 静态披露（非空才覆盖）> 上一份 data.json 旧值兜底
     gflow = collected.get("gld_flow") or {}
@@ -538,9 +568,7 @@ def main():
         "verdict": verdict,
         "macro": macro,
         "us10y": us10y,
-        "dxy": collected.get("dxy") or {"available": False, "value": None, "prev": None,
-                                        "change_pct": None, "high": None, "low": None,
-                                        "tag": None, "trend": []},
+        "dxy": dxy,
         "gld": {"tag": gld_disc_eff.get("tag", "价格代理情绪"),
                 "title": gld_disc_eff.get("title", "GLD ETF 价格（资金代理指标）"),
                 "price": gld.get("price"),
@@ -560,15 +588,13 @@ def main():
         "comex": {**{k: v for k, v in comex.items()},
                   "tag": "趋势向上" if (comex.get("change_pct") or 0) >= 0 else "技术回调",
                   "note": "日内分时（分钟线）；虚线为前结算基准价，日K序列见 candles"},
-        "shfe_main": collected.get("shfe_main") or {"available": False, "price": None,
-                                                    "prev_close": None, "change_pct": None,
-                                                    "daily": []},
+        "shfe_main": shfe,
         "shge": {**shge, "trend_dates": [t["date"] for t in shge.get("trend", [])],
                  "trend": [t["close"] for t in shge.get("trend", [])]},
         "premium": premium,
         "compare": build_compare(comex, shge, premium,
                                  {**gld, **gld_disc_eff, "price": gld.get("price")},
-                                 us10y, macro, collected.get("dxy")),
+                                 us10y, macro, dxy),
     }
 
     # flatten comex trend arrays
